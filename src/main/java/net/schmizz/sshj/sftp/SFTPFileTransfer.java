@@ -33,9 +33,10 @@ public class SFTPFileTransfer
     private volatile LocalFileFilter uploadFilter;
     private volatile RemoteResourceFilter downloadFilter;
     private volatile boolean preserveAttributes = true;
+    private volatile boolean suppressRemoteProbes = false;
 
     public SFTPFileTransfer(SFTPEngine engine) {
-	super(engine.getLoggerFactory());
+        super(engine.getLoggerFactory());
         this.engine = engine;
     }
 
@@ -45,6 +46,14 @@ public class SFTPFileTransfer
 
     public void setPreserveAttributes(boolean preserveAttributes) {
         this.preserveAttributes = preserveAttributes;
+    }
+
+    public boolean getSuppressRemoteProbes() {
+        return suppressRemoteProbes;
+    }
+
+    public void setSuppressRemoteProbes(boolean suppressRemoteProbes) {
+        this.suppressRemoteProbes = suppressRemoteProbes;
     }
 
     @Override
@@ -301,6 +310,10 @@ public class SFTPFileTransfer
         }
 
         private boolean makeDirIfNotExists(final String remote) throws IOException {
+            if (suppressRemoteProbes) {
+                engine.makeDir(remote);
+                return true;
+            }
             try {
                 FileAttributes attrs = engine.stat(remote);
                 if (attrs.getMode().getType() != FileMode.Type.DIRECTORY) {
@@ -320,6 +333,9 @@ public class SFTPFileTransfer
         }
 
         private boolean isDirectory(final String remote) throws IOException {
+            if (suppressRemoteProbes) {
+                return false;
+            }
             try {
                 FileAttributes attrs = engine.stat(remote);
                 return attrs.getMode().getType() == FileMode.Type.DIRECTORY;
@@ -335,6 +351,9 @@ public class SFTPFileTransfer
 
         private String prepareFile(final LocalSourceFile local, final String remote, final long byteOffset)
                 throws IOException {
+            if (suppressRemoteProbes) {
+                return remote;
+            }
             final FileAttributes attrs;
             try {
                 attrs = engine.stat(remote);
