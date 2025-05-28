@@ -61,7 +61,7 @@ public class SFTPFileTransfer
             throws IOException {
         upload(source, dest, 0);
     }
-    
+
     @Override
     public void upload(String source, String dest, long byteOffset)
             throws IOException {
@@ -73,7 +73,7 @@ public class SFTPFileTransfer
             throws IOException {
         download(source, dest, 0);
     }
-    
+
     @Override
     public void download(String source, String dest, long byteOffset)
             throws IOException {
@@ -84,7 +84,7 @@ public class SFTPFileTransfer
     public void upload(LocalSourceFile localFile, String remotePath) throws IOException {
         upload(localFile, remotePath, 0);
     }
-    
+
     @Override
     public void upload(LocalSourceFile localFile, String remotePath, long byteOffset) throws IOException {
         new Uploader(localFile, remotePath).upload(getTransferListener(), byteOffset);
@@ -94,7 +94,7 @@ public class SFTPFileTransfer
     public void download(String source, LocalDestFile dest) throws IOException {
         download(source, dest, 0);
     }
-    
+
     @Override
     public void download(String source, LocalDestFile dest, long byteOffset) throws IOException {
         final PathComponents pathComponents = engine.getPathHelper().getComponents(source);
@@ -149,12 +149,9 @@ public class SFTPFileTransfer
                                           final LocalDestFile local)
                 throws IOException {
             final LocalDestFile adjusted = local.getTargetDirectory(remote.getName());
-            final RemoteDirectory rd = engine.openDir(remote.getPath());
-            try {
+            try (RemoteDirectory rd = engine.openDir(remote.getPath())) {
                 for (RemoteResourceInfo rri : rd.scan(getDownloadFilter()))
                     download(listener, rri, adjusted.getChild(rri.getName()), 0); // not supporting individual byte offsets for these files
-            } finally {
-                rd.close();
             }
             return adjusted;
         }
@@ -165,23 +162,16 @@ public class SFTPFileTransfer
                                            final long byteOffset)
                 throws IOException {
             final LocalDestFile adjusted = local.getTargetFile(remote.getName());
-            final RemoteFile rf = engine.open(remote.getPath());
-            try {
+            try (RemoteFile rf = engine.open(remote.getPath())) {
                 log.debug("Attempting to download {} with offset={}", remote.getPath(), byteOffset);
-                final RemoteFile.ReadAheadRemoteFileInputStream rfis = rf.new ReadAheadRemoteFileInputStream(16, byteOffset);
-                final OutputStream os = adjusted.getOutputStream(byteOffset != 0);
-                try {
+                try (RemoteFile.ReadAheadRemoteFileInputStream rfis = rf.new ReadAheadRemoteFileInputStream(16, byteOffset);
+                     OutputStream os = adjusted.getOutputStream(byteOffset != 0)) {
                     new StreamCopier(rfis, os, engine.getLoggerFactory())
                             .bufSize(engine.getSubsystem().getLocalMaxPacketSize())
                             .keepFlushing(false)
                             .listener(listener)
                             .copy();
-                } finally {
-                    rfis.close();
-                    os.close();
                 }
-            } finally {
-                rf.close();
             }
             return adjusted;
         }
@@ -275,7 +265,7 @@ public class SFTPFileTransfer
                     // Starting at some offset, append
                     modes = EnumSet.of(OpenMode.WRITE, OpenMode.APPEND);
                 }
-                
+
                 log.debug("Attempting to upload {} with offset={}", local.getName(), byteOffset);
                 rf = engine.open(adjusted, modes);
                 fis = local.getInputStream();

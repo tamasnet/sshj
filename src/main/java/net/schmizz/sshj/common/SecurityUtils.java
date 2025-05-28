@@ -276,6 +276,9 @@ public class SecurityUtils {
      */
     public static synchronized void setSecurityProvider(String securityProvider) {
         SecurityUtils.securityProvider = securityProvider;
+        if(null == securityProvider) {
+            SecurityUtils.registerBouncyCastle = null;
+        }
         registrationDone = false;
     }
 
@@ -286,8 +289,8 @@ public class SecurityUtils {
                 if (securityProvider == null && registerBouncyCastle == null) {
                     LOG.info("BouncyCastle not registered, using the default JCE provider");
                 } else if (securityProvider == null) {
-                    LOG.error("Failed to register BouncyCastle as the defaut JCE provider");
-                    throw new SSHRuntimeException("Failed to register BouncyCastle as the defaut JCE provider");
+                    LOG.error("Failed to register BouncyCastle as the default JCE provider");
+                    throw new SSHRuntimeException("Failed to register BouncyCastle as the default JCE provider");
                 }
             }
             registrationDone = true;
